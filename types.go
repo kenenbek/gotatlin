@@ -1,5 +1,6 @@
 package main
 
+import "sync"
 
 type Environment struct {
 	currentTime     float64
@@ -27,4 +28,10 @@ type Worker struct {
 	env *Environment
 	link chan float64
 	queue []float64
+
+	cv *sync.Cond
+}
+
+type EndOfProcess struct {
+
 }
