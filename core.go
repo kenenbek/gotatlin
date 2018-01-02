@@ -24,11 +24,13 @@ func ProcWrapper(env *Environment, processStrategy func(), w *Worker) {
 						// No more events can happen and queue is empty
 						w.answerChannel <- "E"
 						w.cv.L.Unlock()
-						fmt.Println("No more events can happen and queue is empty")
+						fmt.Println(w.name, "No more events, queue is empty")
 						return
 					} else if len(w.queue) == 0 && !noMoreEvents{
 						for len(w.queue) == 0  {
+							fmt.Println(w.name, "start wait")
 							w.cv.Wait()
+							fmt.Println(w.name, "end wait")
 						}
 						w.answerChannel <- w.queue[0]
 					}
@@ -37,18 +39,20 @@ func ProcWrapper(env *Environment, processStrategy func(), w *Worker) {
 			case <-w.closeChan:
 				w.cv.L.Lock()
 				noMoreEvents = true
-				fmt.Println("No more events")
+				fmt.Println(w.name, "No more events")
 				w.cv.L.Unlock()
 			}
 		}
 		fmt.Println("end-worker1")
 	}()
+	w.queue = append(w.queue, 0)
 	go processStrategy()
 }
 
 
 func NewWorkerReceiver(env *Environment, link chan float64) *Worker {
 	w := &Worker{
+		name:"receiver",
 		Process:NewProcess(env),
 		env:env,
 		link:link,
@@ -63,6 +67,7 @@ func NewWorkerReceiver(env *Environment, link chan float64) *Worker {
 
 func NewWorkerSender(env *Environment, link chan float64) *Worker {
 	w := &Worker{
+		name:"sender",
 		Process:NewProcess(env),
 		env:env,
 		link:link,

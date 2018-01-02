@@ -11,7 +11,7 @@ func (w *Worker) send() {
 		w.link <- i
 	}
 	fmt.Println("end of sender 1")
-	w.closeChan <-EndOfProcess{}
+	w.closeChan <- EndOfProcess{}
 	fmt.Println("end of sender 2")
 }
 
@@ -39,23 +39,21 @@ func master(env *Environment, until float64, wg *sync.WaitGroup) {
 		findEvent := false
 		for i := 0; i < n; i++ {
 			env.managerChannels[i].askChannel <- struct{}{}
-			fmt.Println("heer")
 			switch response := (<-env.managerChannels[i].answerChannel).(type) {
 			case string:
 			case float64:
 				response = float64(response)
+				fmt.Println(response)
 				if response < minTime {
 					minTime = response
 					minChannel = env.managerChannels[i].askChannel
 				}
 				findEvent = true
 			}
-			fmt.Println("heer")
 		}
 		if findEvent {
 			minChannel <- true
 			env.currentTime = minTime
-			fmt.Println(minTime)
 		}else {
 			break
 		}

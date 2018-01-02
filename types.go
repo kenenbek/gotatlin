@@ -28,7 +28,7 @@ type Worker struct {
 	env *Environment
 	link chan float64
 	queue []float64
-
+	name string
 	cv *sync.Cond
 }
 
