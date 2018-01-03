@@ -6,7 +6,6 @@ import (
 )
 
 func ProcWrapper(env *Environment, processStrategy func(), w *Worker) {
-	noMoreEvents := false
 	go func() {
 		for {
 			select {
@@ -18,19 +17,21 @@ func ProcWrapper(env *Environment, processStrategy func(), w *Worker) {
 					w.cv.L.Unlock()
 				default:
 					w.cv.L.Lock()
+					label:
 					if len(w.queue) > 0 {
 						w.answerChannel <- w.queue[0]
-					} else if len(w.queue) == 0 && noMoreEvents{
+					} else if len(w.queue) == 0 && w.noMoreEvents {
 						// No more events can happen and queue is empty
 						w.answerChannel <- "E"
-						w.cv.L.Unlock()
-						fmt.Println(w.name, "No more events, queue is empty")
-						return
-					} else if len(w.queue) == 0 && !noMoreEvents{
-						for len(w.queue) == 0  {
-							fmt.Println(w.name, "start wait")
+					} else if len(w.queue) == 0 && !w.noMoreEvents {
+						for len(w.queue) == 0 {
+							fmt.Println("start wait", w.noMoreEvents, w.name)
 							w.cv.Wait()
-							fmt.Println(w.name, "end wait")
+							fmt.Println("end wait")
+							if w.noMoreEvents == true {
+								fmt.Println("wait and nomore events")
+								goto label
+							}
 						}
 						w.answerChannel <- w.queue[0]
 					}
@@ -38,8 +39,7 @@ func ProcWrapper(env *Environment, processStrategy func(), w *Worker) {
 				}
 			case <-w.closeChan:
 				w.cv.L.Lock()
-				noMoreEvents = true
-				fmt.Println(w.name, "No more events")
+				w.noMoreEvents = true
 				w.cv.L.Unlock()
 			}
 		}
@@ -49,14 +49,14 @@ func ProcWrapper(env *Environment, processStrategy func(), w *Worker) {
 	go processStrategy()
 }
 
-
 func NewWorkerReceiver(env *Environment, link chan float64) *Worker {
 	w := &Worker{
-		name:"receiver",
-		Process:NewProcess(env),
-		env:env,
-		link:link,
-		cv:sync.NewCond(&sync.Mutex{})}
+		name:    "receiver",
+		Process: NewProcess(env),
+		env:     env,
+		link:    link,
+		cv:      sync.NewCond(&sync.Mutex{}),
+		noMoreEvents:false}
 
 	//w.queue = []float64{0.1, 0.3, 0.5}
 	w.queue = []float64{}
@@ -64,14 +64,14 @@ func NewWorkerReceiver(env *Environment, link chan float64) *Worker {
 	return w
 }
 
-
 func NewWorkerSender(env *Environment, link chan float64) *Worker {
 	w := &Worker{
-		name:"sender",
-		Process:NewProcess(env),
-		env:env,
-		link:link,
-		cv:sync.NewCond(&sync.Mutex{})}
+		name:    "sender",
+		Process: NewProcess(env),
+		env:     env,
+		link:    link,
+		cv:      sync.NewCond(&sync.Mutex{}),
+		noMoreEvents:false}
 	//w.queue = []float64{0.2, 0.4, 0.6}
 	w.queue = []float64{}
 	ProcWrapper(env, w.send, w)
@@ -87,8 +87,8 @@ func NewProcess(env *Environment) *Process {
 	env.managerChannels = append(env.managerChannels, pairChan)
 	env.closeChannels = append(env.closeChannels, closeChan)
 	return &Process{
-		askChannel: ask,
+		askChannel:    ask,
 		answerChannel: answer,
-		closeChan: closeChan,
+		closeChan:     closeChan,
 	}
 }

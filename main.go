@@ -10,9 +10,10 @@ func (w *Worker) send() {
 	for i := float64(1); i < 3; i++ {
 		w.link <- i
 	}
-	fmt.Println("end of sender 1")
-	w.closeChan <- EndOfProcess{}
-	fmt.Println("end of sender 2")
+	w.noMoreEvents = true
+	fmt.Println("start signal of nomore events", w.name)
+	w.cv.Signal()
+	fmt.Println("end signal of nomore events", w.name)
 }
 
 func (w *Worker) receive() {
@@ -25,9 +26,10 @@ func (w *Worker) receive() {
 		w.cv.L.Unlock()
 		w.cv.Signal()
 	}
-	fmt.Println("end of receiver 1")
-	w.closeChan <- EndOfProcess{}
-	fmt.Println("end of receiver 2")
+	w.noMoreEvents = true
+	fmt.Println("start signal of nomore events", w.name)
+	w.cv.Signal()
+	fmt.Println("end signal of nomore events", w.name)
 }
 
 func master(env *Environment, until float64, wg *sync.WaitGroup) {
@@ -43,7 +45,6 @@ func master(env *Environment, until float64, wg *sync.WaitGroup) {
 			case string:
 			case float64:
 				response = float64(response)
-				fmt.Println(response)
 				if response < minTime {
 					minTime = response
 					minChannel = env.managerChannels[i].askChannel
@@ -54,6 +55,7 @@ func master(env *Environment, until float64, wg *sync.WaitGroup) {
 		if findEvent {
 			minChannel <- true
 			env.currentTime = minTime
+			fmt.Println(minTime)
 		}else {
 			break
 		}

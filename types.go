@@ -30,6 +30,7 @@ type Worker struct {
 	queue []float64
 	name string
 	cv *sync.Cond
+	noMoreEvents bool
 }
 
 type EndOfProcess struct {
