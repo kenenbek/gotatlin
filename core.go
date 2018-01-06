@@ -1,50 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"sync"
 )
 
 func ProcWrapper(env *Environment, processStrategy func(), w *Worker) {
-	go func() {
-		for {
-			select {
-			case rec := <-w.askChannel:
-				switch rec.(type) {
-				case bool:
-					w.cv.L.Lock()
-					_, w.queue = w.queue[0], w.queue[1:]
-					w.cv.L.Unlock()
-				default:
-					w.cv.L.Lock()
-					label:
-					if len(w.queue) > 0 {
-						w.answerChannel <- w.queue[0]
-					} else if len(w.queue) == 0 && w.noMoreEvents {
-						// No more events can happen and queue is empty
-						w.answerChannel <- "E"
-					} else if len(w.queue) == 0 && !w.noMoreEvents {
-						for len(w.queue) == 0 {
-							fmt.Println("start wait", w.noMoreEvents, w.name)
-							w.cv.Wait()
-							fmt.Println("end wait")
-							if w.noMoreEvents == true {
-								fmt.Println("wait and nomore events")
-								goto label
-							}
-						}
-						w.answerChannel <- w.queue[0]
-					}
-					w.cv.L.Unlock()
-				}
-			case <-w.closeChan:
-				w.cv.L.Lock()
-				w.noMoreEvents = true
-				w.cv.L.Unlock()
-			}
-		}
-		fmt.Println("end-worker1")
-	}()
 	w.queue = append(w.queue, 0)
 	go processStrategy()
 }
@@ -56,11 +16,13 @@ func NewWorkerReceiver(env *Environment, link chan float64) *Worker {
 		env:     env,
 		link:    link,
 		cv:      sync.NewCond(&sync.Mutex{}),
-		noMoreEvents:false}
+		noMoreEvents:false,
+		mutex: sync.RWMutex{}}
 
 	//w.queue = []float64{0.1, 0.3, 0.5}
 	w.queue = []float64{}
 	ProcWrapper(env, w.receive, w)
+	env.sliceOfProcesses = append(env.sliceOfProcesses, w)
 	return w
 }
 
@@ -71,10 +33,12 @@ func NewWorkerSender(env *Environment, link chan float64) *Worker {
 		env:     env,
 		link:    link,
 		cv:      sync.NewCond(&sync.Mutex{}),
-		noMoreEvents:false}
+		noMoreEvents:false,
+		mutex:sync.RWMutex{}}
 	//w.queue = []float64{0.2, 0.4, 0.6}
 	w.queue = []float64{}
 	ProcWrapper(env, w.send, w)
+	env.sliceOfProcesses = append(env.sliceOfProcesses, w)
 	return w
 }
 

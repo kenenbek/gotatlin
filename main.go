@@ -36,34 +36,37 @@ func master(env *Environment, until float64, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for env.currentTime < until {
 		minTime := math.MaxFloat32
-		var minChannel chan interface{}
-		n := len(env.managerChannels)
+		n := len(env.sliceOfProcesses)
+		var indexOfProcess int
 		findEvent := false
 		for i := 0; i < n; i++ {
-			env.managerChannels[i].askChannel <- struct{}{}
-			switch response := (<-env.managerChannels[i].answerChannel).(type) {
-			case string:
-			case float64:
-				response = float64(response)
-				if response < minTime {
-					minTime = response
-					minChannel = env.managerChannels[i].askChannel
-				}
+			timeEvent := env.sliceOfProcesses[i].getMinimumEvent()
+			if timeEvent < minTime {
+				minTime = timeEvent
+				indexOfProcess = i
 				findEvent = true
 			}
 		}
 		if findEvent {
-			minChannel <- true
+			fmt.Println("kotok", indexOfProcess, env.sliceOfProcesses[indexOfProcess].name)
+			env.sliceOfProcesses[indexOfProcess].deleteMinimumEvent()
 			env.currentTime = minTime
 			fmt.Println(minTime)
-		}else {
+		} else {
 			break
 		}
+
+		// Delete worker with noMore events
+		j := 0
+		for index := range env.sliceOfProcesses {
+			if env.sliceOfProcesses[index].hasMoreEvents() {
+				env.sliceOfProcesses[j] = env.sliceOfProcesses[index]
+				j++
+			}
+		}
+		env.sliceOfProcesses = env.sliceOfProcesses[:j]
 	}
-	n := len(env.managerChannels)
-	for i := 0; i < n; i++ {
-		close(env.closeChannels[i])
-	}
+
 	fmt.Println("end-master")
 }
 
