@@ -2,12 +2,13 @@ package main
 
 import (
 	"sync"
+	"fmt"
 )
 
 type Environment struct {
-	currentTime     float64
-	managerChannels []pairChannel
-	closeChannels   []chan interface{}
+	currentTime      float64
+	managerChannels  []pairChannel
+	closeChannels    []chan interface{}
 	sliceOfProcesses []*Worker
 }
 
@@ -23,45 +24,55 @@ type Process struct {
 	env *Environment
 	askChannel
 	answerChannel
-	closeChan chan interface{}
+	waitEventsOrDone chan interface{}
+	noMoreEventsChan chan bool
 }
 
 type Worker struct {
 	*Process
-	env *Environment
-	link chan float64
-	queue []float64
-	name string
-	cv *sync.Cond
+	env          *Environment
+	link         chan float64
+	queue        []float64
+	name         string
+	cv           *sync.Cond
 	noMoreEvents bool
-	mutex sync.RWMutex
+	mutex        sync.RWMutex
 }
 
 type EndOfProcess struct {
-
 }
 
-
-func(w *Worker) getMinimumEvent() float64{
-	w.mutex.RLock()
-	defer w.mutex.RUnlock()
+func (w *Worker) getMinimumEvent() interface{} {
+	w.cv.L.Lock()
+	defer w.cv.L.Unlock()
 	queueLength := len(w.queue)
-	if queueLength == 0{
-		return -42
+	if queueLength == 0 && w.noMoreEvents {
+		return nil
+	} else if queueLength == 0 && !w.noMoreEvents {
+		for len(w.queue) == 0 {
+			fmt.Println("start wait", w.name)
+			w.cv.Wait()
+			if w.noMoreEvents == true{
+				return nil
+			}
+			fmt.Println("end wait", w.name)
+		}
+		return w.queue[0]
 	} else {
 		return w.queue[0]
 	}
+	return nil
 }
 
-func(w *Worker) deleteMinimumEvent(){
-	w.mutex.Lock()
-	defer w.mutex.Unlock()
+func (w *Worker) deleteMinimumEvent() {
+	w.cv.L.Lock()
+	defer w.cv.L.Unlock()
 	_, w.queue = w.queue[0], w.queue[1:]
 }
 
-func(w *Worker) hasMoreEvents() bool{
-	w.mutex.RLock()
-	defer w.mutex.RUnlock()
+func (w *Worker) hasMoreEvents() bool {
+	w.cv.L.Lock()
+	defer w.cv.L.Unlock()
 	y := len(w.queue) > 0
 	return y || (!w.noMoreEvents)
 }

@@ -27,9 +27,7 @@ func (w *Worker) receive() {
 		w.cv.Signal()
 	}
 	w.noMoreEvents = true
-	fmt.Println("start signal of nomore events", w.name)
 	w.cv.Signal()
-	fmt.Println("end signal of nomore events", w.name)
 }
 
 func master(env *Environment, until float64, wg *sync.WaitGroup) {
@@ -41,10 +39,15 @@ func master(env *Environment, until float64, wg *sync.WaitGroup) {
 		findEvent := false
 		for i := 0; i < n; i++ {
 			timeEvent := env.sliceOfProcesses[i].getMinimumEvent()
-			if timeEvent < minTime {
-				minTime = timeEvent
-				indexOfProcess = i
-				findEvent = true
+			switch timeEvent.(type) {
+			case nil:
+			case float64:
+				timeEvent, _ := timeEvent.(float64)
+				if timeEvent < minTime {
+					minTime = timeEvent
+					indexOfProcess = i
+					findEvent = true
+				}
 			}
 		}
 		if findEvent {

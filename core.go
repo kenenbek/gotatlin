@@ -6,6 +6,25 @@ import (
 
 func ProcWrapper(env *Environment, processStrategy func(), w *Worker) {
 	w.queue = append(w.queue, 0)
+
+	//go func() {
+	//	for  {
+	//		noMoreEvents := false
+	//		select {
+	//		case <-w.waitEventsOrDone:
+	//			w.cv.L.Lock()
+	//			w.cv.L.Unlock()
+	//		case  nME := <-w.noMoreEventsChan:
+	//			if noMoreEvents{
+	//				noMoreEvents <- ds
+	//			}
+	//		}
+	//	}
+	//	noMoreEvents := <- w.noMoreEventsChan
+	//	if noMoreEvents{
+	//
+	//	}
+	//}()
 	go processStrategy()
 }
 
@@ -46,6 +65,7 @@ func NewProcess(env *Environment) *Process {
 	ask := make(chan interface{})
 	answer := make(chan interface{})
 	closeChan := make(chan interface{})
+	noMEC := make(chan bool)
 
 	pairChan := pairChannel{ask, answer}
 	env.managerChannels = append(env.managerChannels, pairChan)
@@ -53,6 +73,7 @@ func NewProcess(env *Environment) *Process {
 	return &Process{
 		askChannel:    ask,
 		answerChannel: answer,
-		closeChan:     closeChan,
+		waitEventsOrDone:     closeChan,
+		noMoreEventsChan:noMEC,
 	}
 }
