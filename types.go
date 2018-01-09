@@ -41,6 +41,10 @@ type Worker struct {
 type EndOfProcess struct {
 }
 
+type Route struct {
+	start
+}
+
 func (w *Worker) getMinimumEvent() interface{} {
 	w.cv.L.Lock()
 	defer w.cv.L.Unlock()
