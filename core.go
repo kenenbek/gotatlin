@@ -6,7 +6,6 @@ import (
 
 func ProcWrapper(env *Environment, processStrategy func(), w *Worker) {
 	w.queue = append(w.queue, 0)
-
 	//go func() {
 	//	for  {
 	//		noMoreEvents := false

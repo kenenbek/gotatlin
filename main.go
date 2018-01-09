@@ -10,10 +10,10 @@ func (w *Worker) send() {
 	for i := float64(1); i < 3; i++ {
 		w.link <- i
 	}
+	w.cv.L.Lock()
 	w.noMoreEvents = true
-	fmt.Println("start signal of nomore events", w.name)
+	w.cv.L.Unlock()
 	w.cv.Signal()
-	fmt.Println("end signal of nomore events", w.name)
 }
 
 func (w *Worker) receive() {
@@ -26,7 +26,9 @@ func (w *Worker) receive() {
 		w.cv.L.Unlock()
 		w.cv.Signal()
 	}
+	w.cv.L.Lock()
 	w.noMoreEvents = true
+	w.cv.L.Unlock()
 	w.cv.Signal()
 }
 
@@ -51,7 +53,6 @@ func master(env *Environment, until float64, wg *sync.WaitGroup) {
 			}
 		}
 		if findEvent {
-			fmt.Println("kotok", indexOfProcess, env.sliceOfProcesses[indexOfProcess].name)
 			env.sliceOfProcesses[indexOfProcess].deleteMinimumEvent()
 			env.currentTime = minTime
 			fmt.Println(minTime)
@@ -62,9 +63,12 @@ func master(env *Environment, until float64, wg *sync.WaitGroup) {
 		// Delete worker with noMore events
 		j := 0
 		for index := range env.sliceOfProcesses {
+			object := env.sliceOfProcesses[index]
 			if env.sliceOfProcesses[index].hasMoreEvents() {
 				env.sliceOfProcesses[j] = env.sliceOfProcesses[index]
 				j++
+			}else{
+				fmt.Println("end of", object.name, "object")
 			}
 		}
 		env.sliceOfProcesses = env.sliceOfProcesses[:j]

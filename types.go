@@ -2,7 +2,6 @@ package main
 
 import (
 	"sync"
-	"fmt"
 )
 
 type Environment struct {
@@ -50,12 +49,13 @@ func (w *Worker) getMinimumEvent() interface{} {
 		return nil
 	} else if queueLength == 0 && !w.noMoreEvents {
 		for len(w.queue) == 0 {
-			fmt.Println("start wait", w.name)
 			w.cv.Wait()
+			if len(w.queue) != 0 {
+				return w.queue[0]
+			}
 			if w.noMoreEvents == true{
 				return nil
 			}
-			fmt.Println("end wait", w.name)
 		}
 		return w.queue[0]
 	} else {
