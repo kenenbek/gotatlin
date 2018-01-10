@@ -7,8 +7,8 @@ import (
 )
 
 func (w *Worker) send() {
-	for i := float64(1); i < 2; i++ {
-		MSG_task_send(w.env, "A", "B", 12)
+	for i := float64(1); i < 100; i++ {
+		MSG_task_send(w.env, "A", "B", 12*i)
 		//w.link <- i
 	}
 	w.cv.L.Lock()
@@ -19,9 +19,9 @@ func (w *Worker) send() {
 
 func (w *Worker) receive() {
 	x := float64(0)
-	for i := 1; i < 2; i++ {
+	for i := 1; i < 100; i++ {
 		//x = <-w.link
-		MSG_task_receive(w.env)
+		x = MSG_task_receive(w.env)
 		w.cv.L.Lock()
 		w.queue = append(w.queue, x)
 		//fmt.Println("End receive", i)
@@ -65,12 +65,12 @@ func master(env *Environment, until float64, wg *sync.WaitGroup) {
 		// Delete worker with noMore events
 		j := 0
 		for index := range env.sliceOfProcesses {
-			object := env.sliceOfProcesses[index]
+			//_ := env.sliceOfProcesses[index]
 			if env.sliceOfProcesses[index].hasMoreEvents() {
 				env.sliceOfProcesses[j] = env.sliceOfProcesses[index]
 				j++
 			}else{
-				fmt.Println("end of", object.name, "object")
+				//fmt.Println("end of", object.name, "object")
 			}
 		}
 		env.sliceOfProcesses = env.sliceOfProcesses[:j]

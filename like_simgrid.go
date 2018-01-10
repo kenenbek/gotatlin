@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"reflect"
 )
 
@@ -35,10 +34,9 @@ func MSG_task_send(env *Environment, sender string, address string, size float64
 	route := Route{sender, address}
 	env.platform[route].linkChan <- size
 	//bandwidth := env.platform[route]
-
 }
 
-func MSG_task_receive(env *Environment) {
+func MSG_task_receive(env *Environment) float64{
 	_, value, _ := reflect.Select(env.cases)
-	fmt.Println("received", value)
+	return value.Float()
 }
