@@ -7,8 +7,9 @@ import (
 )
 
 func (w *Worker) send() {
-	for i := float64(1); i < 3; i++ {
-		w.link <- i
+	for i := float64(1); i < 2; i++ {
+		MSG_task_send(w.env, "A", "B", 12)
+		//w.link <- i
 	}
 	w.cv.L.Lock()
 	w.noMoreEvents = true
@@ -18,8 +19,9 @@ func (w *Worker) send() {
 
 func (w *Worker) receive() {
 	x := float64(0)
-	for i := 1; i < 3; i++ {
-		x = <-w.link
+	for i := 1; i < 2; i++ {
+		//x = <-w.link
+		MSG_task_receive(w.env)
 		w.cv.L.Lock()
 		w.queue = append(w.queue, x)
 		//fmt.Println("End receive", i)
@@ -78,10 +80,11 @@ func master(env *Environment, until float64, wg *sync.WaitGroup) {
 }
 
 func main() {
+	env := new(Environment)
+	MSG_platform_init(env)
 	link := make(chan float64)
 	var wg sync.WaitGroup
 	wg.Add(1)
-	env := new(Environment)
 	_ = NewWorkerSender(env, link)
 	_ = NewWorkerReceiver(env, link)
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"sync"
+	"reflect"
 )
 
 type Environment struct {
@@ -9,6 +10,8 @@ type Environment struct {
 	managerChannels  []pairChannel
 	closeChannels    []chan interface{}
 	sliceOfProcesses []*Worker
+	platform map[Route]Link
+	cases []reflect.SelectCase
 }
 
 type askChannel chan interface{}
@@ -41,9 +44,6 @@ type Worker struct {
 type EndOfProcess struct {
 }
 
-type Route struct {
-	start
-}
 
 func (w *Worker) getMinimumEvent() interface{} {
 	w.cv.L.Lock()
