@@ -5,7 +5,9 @@ import (
 )
 
 func ProcWrapper(env *Environment, processStrategy func(), w *Worker) {
-	w.queue = append(w.queue, 0)
+	event := Event{timeStart: 0,
+		timeEnd: 0}
+	w.queue = append(w.queue, event)
 	//go func() {
 	//	for  {
 	//		noMoreEvents := false
@@ -29,16 +31,16 @@ func ProcWrapper(env *Environment, processStrategy func(), w *Worker) {
 
 func NewWorkerReceiver(env *Environment, link chan float64) *Worker {
 	w := &Worker{
-		name:    "receiver",
-		Process: NewProcess(env),
-		env:     env,
-		link:    link,
-		cv:      sync.NewCond(&sync.Mutex{}),
-		noMoreEvents:false,
-		mutex: sync.RWMutex{}}
+		name:         "receiver",
+		Process:      NewProcess(env),
+		env:          env,
+		link:         link,
+		cv:           sync.NewCond(&sync.Mutex{}),
+		noMoreEvents: false,
+		mutex:        sync.RWMutex{}}
 
 	//w.queue = []float64{0.1, 0.3, 0.5}
-	w.queue = []float64{}
+	w.queue = []Event{}
 	ProcWrapper(env, w.receive, w)
 	env.sliceOfProcesses = append(env.sliceOfProcesses, w)
 	return w
@@ -46,15 +48,15 @@ func NewWorkerReceiver(env *Environment, link chan float64) *Worker {
 
 func NewWorkerSender(env *Environment, link chan float64) *Worker {
 	w := &Worker{
-		name:    "sender",
-		Process: NewProcess(env),
-		env:     env,
-		link:    link,
-		cv:      sync.NewCond(&sync.Mutex{}),
-		noMoreEvents:false,
-		mutex:sync.RWMutex{}}
+		name:         "sender",
+		Process:      NewProcess(env),
+		env:          env,
+		link:         link,
+		cv:           sync.NewCond(&sync.Mutex{}),
+		noMoreEvents: false,
+		mutex:        sync.RWMutex{}}
 	//w.queue = []float64{0.2, 0.4, 0.6}
-	w.queue = []float64{}
+	w.queue = []Event{}
 	ProcWrapper(env, w.send, w)
 	env.sliceOfProcesses = append(env.sliceOfProcesses, w)
 	return w
@@ -70,9 +72,9 @@ func NewProcess(env *Environment) *Process {
 	env.managerChannels = append(env.managerChannels, pairChan)
 	env.closeChannels = append(env.closeChannels, closeChan)
 	return &Process{
-		askChannel:    ask,
-		answerChannel: answer,
-		waitEventsOrDone:     closeChan,
-		noMoreEventsChan:noMEC,
+		askChannel:       ask,
+		answerChannel:    answer,
+		waitEventsOrDone: closeChan,
+		noMoreEventsChan: noMEC,
 	}
 }

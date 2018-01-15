@@ -7,9 +7,8 @@ import (
 )
 
 func (w *Worker) send() {
-	for i := float64(1); i < 100; i++ {
-		MSG_task_send(w.env, "A", "B", 12*i)
-		//w.link <- i
+	for i := float64(1); i < 10; i++ {
+		MSG_task_send(w, "A", "B", 12*i)
 	}
 	w.cv.L.Lock()
 	w.noMoreEvents = true
@@ -18,10 +17,9 @@ func (w *Worker) send() {
 }
 
 func (w *Worker) receive() {
-	x := float64(0)
-	for i := 1; i < 100; i++ {
-		//x = <-w.link
-		x = MSG_task_receive(w.env)
+	x := Event{}
+	for i := 1; i < 10; i++ {
+		x = MSG_task_receive(w)
 		w.cv.L.Lock()
 		w.queue = append(w.queue, x)
 		//fmt.Println("End receive", i)
@@ -34,28 +32,20 @@ func (w *Worker) receive() {
 	w.cv.Signal()
 }
 
-func master(env *Environment, until float64, wg *sync.WaitGroup) {
+func master2(env *Environment, until float64, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for env.currentTime < until {
 		minTime := math.MaxFloat32
-		n := len(env.sliceOfProcesses)
+		n := len(env.workers)
 		var indexOfProcess int
 		findEvent := false
 		for i := 0; i < n; i++ {
-			timeEvent := env.sliceOfProcesses[i].getMinimumEvent()
-			switch timeEvent.(type) {
-			case nil:
-			case float64:
-				timeEvent, _ := timeEvent.(float64)
-				if timeEvent < minTime {
-					minTime = timeEvent
-					indexOfProcess = i
-					findEvent = true
-				}
-			}
+			env.workers[i].resumeChan <- struct {}{}
+			
 		}
+
 		if findEvent {
-			env.sliceOfProcesses[indexOfProcess].deleteMinimumEvent()
+			env.workers[indexOfProcess].deleteMinimumEvent()
 			env.currentTime = minTime
 			fmt.Println(minTime)
 		} else {
@@ -64,16 +54,62 @@ func master(env *Environment, until float64, wg *sync.WaitGroup) {
 
 		// Delete worker with noMore events
 		j := 0
-		for index := range env.sliceOfProcesses {
-			//_ := env.sliceOfProcesses[index]
-			if env.sliceOfProcesses[index].hasMoreEvents() {
-				env.sliceOfProcesses[j] = env.sliceOfProcesses[index]
+		for index := range env.workers {
+			//_ := env.workers[index]
+			if env.workers[index].hasMoreEvents() {
+				env.workers[j] = env.workers[index]
 				j++
-			}else{
+			} else {
 				//fmt.Println("end of", object.name, "object")
 			}
 		}
-		env.sliceOfProcesses = env.sliceOfProcesses[:j]
+		env.workers = env.workers[:j]
+	}
+
+	fmt.Println("end-master")
+}
+
+func master(env *Environment, until float64, wg *sync.WaitGroup) {
+	defer wg.Done()
+	for env.currentTime < until {
+		minTime := math.MaxFloat32
+		n := len(env.workers)
+		var indexOfProcess int
+		findEvent := false
+		for i := 0; i < n; i++ {
+			timeEvent := env.workers[i].getMinimumEvent()
+			switch timeEvent.(type) {
+			case nil:
+			case Event:
+				timeEvent, _ := timeEvent.(Event)
+				if timeEvent.timeEnd < minTime {
+					minTime = timeEvent.timeEnd
+					indexOfProcess = i
+					findEvent = true
+				}
+			}
+
+		}
+		if findEvent {
+			env.workers[indexOfProcess].deleteMinimumEvent()
+			env.currentTime = minTime
+			fmt.Println(minTime)
+		} else {
+			break
+		}
+
+		// Delete worker with noMore events
+		j := 0
+		for index := range env.workers {
+			//_ := env.workers[index]
+			if env.workers[index].hasMoreEvents() {
+				env.workers[j] = env.workers[index]
+				j++
+			} else {
+				//fmt.Println("end of", object.name, "object")
+			}
+		}
+		env.workers = env.workers[:j]
 	}
 
 	fmt.Println("end-master")
@@ -86,6 +122,7 @@ func main() {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	_ = NewWorkerSender(env, link)
+	//_ = NewWorkerSender(env, link)
 	_ = NewWorkerReceiver(env, link)
 
 	go master(env, float64(51.61), &wg)
