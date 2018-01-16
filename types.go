@@ -1,19 +1,8 @@
 package main
 
 import (
-	"reflect"
 	"sync"
 )
-
-type Environment struct {
-	currentTime      float64
-	managerChannels  []pairChannel
-	closeChannels    []chan interface{}
-	workers []*Worker
-	platform         map[Route]Link
-	cases            []reflect.SelectCase
-	queue            []Event
-}
 
 type askChannel chan interface{}
 type answerChannel chan interface{}
@@ -29,6 +18,7 @@ type Process struct {
 	answerChannel
 	waitEventsOrDone chan interface{}
 	noMoreEventsChan chan bool
+	resumeChan       chan *sync.WaitGroup
 }
 
 type Worker struct {
@@ -40,7 +30,6 @@ type Worker struct {
 	cv           *sync.Cond
 	noMoreEvents bool
 	mutex        sync.RWMutex
-	resumeChan   chan interface{}
 }
 
 type EndOfProcess struct {
@@ -82,8 +71,7 @@ func (w *Worker) hasMoreEvents() bool {
 	return y || (!w.noMoreEvents)
 }
 
-
-func (worker *Worker) doWork(){
+func (worker *Worker) doWork() {
 	<-worker.resumeChan
-	worker.resumeChan <- struct {}{}
 }
+

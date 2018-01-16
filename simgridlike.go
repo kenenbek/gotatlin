@@ -1,8 +1,20 @@
 package main
 
-import (
-	"reflect"
-)
+import "sync"
+
+type RoutesMap map[Route]*Link
+
+func (routeMap RoutesMap) Get(r Route) (d *Link, ok bool) {
+	d, ok = routeMap[r]
+	if ok {
+		return
+	}
+	d, ok = routeMap[Route{start: r.finish, finish: r.start}]
+	if ok {
+		return
+	}
+	return nil, false
+}
 
 type Route struct {
 	start  string
@@ -10,32 +22,33 @@ type Route struct {
 }
 
 type Link struct {
-	linkChan  chan Event
-	bandwidth float64
-
-	resource *Resource
+	*Resource
 }
 
+func(r *Resource) putEvents(events ...*Event){
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	r.queue = append(r.queue, events...)
+}
+
+
 func MSG_platform_init(env *Environment) {
-	platform := make(map[Route]Link)
+	platform := make(map[Route]*Link)
 	v := Route{start: "A",
 		finish: "B"}
-	platform[v] = Link{
-		linkChan:  make(chan Event),
+	platform[v] = &Link{
 		bandwidth: 1,
+		mutex : &sync.Mutex{},
 	}
-	env.platform = platform
-
-	/*for reflection. receive from multiple goroutines*/
-	cases := make([]reflect.SelectCase, 1)
-	cases[0] = reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(env.platform[v].linkChan)}
-	env.cases = cases
+	env.routesMap = platform
 }
 
 func MSG_task_send(worker *Worker, sender string, address string, size float64) interface{} {
-	<- worker.resumeChan
+	wg := <- worker.resumeChan
+	defer wg.Done()
+
 	route := Route{sender, address}
-	timeEnd := worker.env.currentTime + size/worker.env.platform[route].bandwidth
+	timeEnd := worker.env.currentTime + size / worker.env.routesMap[route].bandwidth
 
 	eventA := Event{size: size,
 		timeStart: worker.env.currentTime,
@@ -46,13 +59,16 @@ func MSG_task_send(worker *Worker, sender string, address string, size float64) 
 		timeEnd:   timeEnd,
 		label:     address}
 
-	//worker.env.platform[route].linkChan <- event
-	worker.env.queue = append(worker.env.queue, eventA, eventB)
+	worker.env.PutEvents(&eventA, &eventB)
+
+	// Should improve in the future!
+	worker.env.routesMap[route].putEvents(&eventA, &eventB)
 	return nil
 }
 
-func MSG_task_receive(worker *Worker, env *Environment) interface{} {
-	<- worker.resumeChan
+func MSG_task_receive(worker *Worker) interface{} {
+	wg := <- worker.resumeChan
+	defer wg.Done()
 	//_, value, _ := reflect.Select(env.cases)
 	return nil
 }

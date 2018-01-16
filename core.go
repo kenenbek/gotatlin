@@ -7,25 +7,8 @@ import (
 func ProcWrapper(env *Environment, processStrategy func(), w *Worker) {
 	event := Event{timeStart: 0,
 		timeEnd: 0}
-	w.queue = append(w.queue, event)
-	//go func() {
-	//	for  {
-	//		noMoreEvents := false
-	//		select {
-	//		case <-w.waitEventsOrDone:
-	//			w.cv.L.Lock()
-	//			w.cv.L.Unlock()
-	//		case  nME := <-w.noMoreEventsChan:
-	//			if noMoreEvents{
-	//				noMoreEvents <- ds
-	//			}
-	//		}
-	//	}
-	//	noMoreEvents := <- w.noMoreEventsChan
-	//	if noMoreEvents{
-	//
-	//	}
-	//}()
+
+	env.PutEvents(&event)
 	go processStrategy()
 }
 
@@ -42,7 +25,7 @@ func NewWorkerReceiver(env *Environment, link chan float64) *Worker {
 	//w.queue = []float64{0.1, 0.3, 0.5}
 	w.queue = []Event{}
 	ProcWrapper(env, w.receive, w)
-	env.sliceOfProcesses = append(env.sliceOfProcesses, w)
+	env.workers = append(env.workers, w)
 	return w
 }
 
@@ -58,7 +41,7 @@ func NewWorkerSender(env *Environment, link chan float64) *Worker {
 	//w.queue = []float64{0.2, 0.4, 0.6}
 	w.queue = []Event{}
 	ProcWrapper(env, w.send, w)
-	env.sliceOfProcesses = append(env.sliceOfProcesses, w)
+	env.workers = append(env.workers, w)
 	return w
 }
 
@@ -76,5 +59,6 @@ func NewProcess(env *Environment) *Process {
 		answerChannel:    answer,
 		waitEventsOrDone: closeChan,
 		noMoreEventsChan: noMEC,
+		resumeChan:make(chan *sync.WaitGroup),
 	}
 }

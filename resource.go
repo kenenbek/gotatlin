@@ -1,10 +1,13 @@
 package main
 
+import "sync"
+
 type Resource struct {
 	queue     []*Event
 	bandwidth float64
 
 	lastTimeRequest float64
+	mutex sync.Mutex
 }
 
 type Event struct {
@@ -15,9 +18,10 @@ type Event struct {
 
 	remainingSize float64
 	label         string
+	callbacks []func(*Event)
 }
 
-type ByTime []Event
+type ByTime []*Event
 
 func (s ByTime) Len() int {
 	return len(s)
