@@ -74,4 +74,3 @@ func (w *Worker) hasMoreEvents() bool {
 func (worker *Worker) doWork() {
 	<-worker.resumeChan
 }
-

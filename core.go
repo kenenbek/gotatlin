@@ -5,10 +5,10 @@ import (
 )
 
 func ProcWrapper(env *Environment, processStrategy func(), w *Worker) {
-	event := Event{timeStart: 0,
-		timeEnd: 0}
-
-	env.PutEvents(&event)
+	//event := Event{timeStart: 0,
+	//	timeEnd: 0}
+	//
+	//env.PutEvents(&event)
 	go processStrategy()
 }
 
@@ -59,6 +59,6 @@ func NewProcess(env *Environment) *Process {
 		answerChannel:    answer,
 		waitEventsOrDone: closeChan,
 		noMoreEventsChan: noMEC,
-		resumeChan:make(chan *sync.WaitGroup),
+		resumeChan:       make(chan *sync.WaitGroup),
 	}
 }

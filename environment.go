@@ -1,8 +1,10 @@
 package main
 
 import (
-	"sync"
 	"sort"
+	"sync"
+	//"fmt"
+	"fmt"
 )
 
 type Environment struct {
@@ -30,13 +32,13 @@ func (env *Environment) update(deltaTime float64) {
 	for key := range env.routesMap {
 		queue := env.routesMap[key].queue
 		sort.Sort(ByTime(queue))
+		fmt.Printf("%v", queue)
 		bandwidthOld := env.routesMap[key].bandwidth / (float64(len(queue)) + 1)
 		bandwidthNew := env.routesMap[key].bandwidth / (float64(len(queue)))
-		for index := range queue{
+		for index := range queue {
 			queue[index].remainingSize -= deltaTime * bandwidthOld
 		}
 		//update only for minimum event
 		queue[0].timeEnd = env.currentTime + queue[0].remainingSize / bandwidthNew
-
 	}
 }

@@ -1,13 +1,16 @@
 package main
 
-import "sync"
+import (
+	"sync"
+	"fmt"
+)
 
 type Resource struct {
 	queue     []*Event
 	bandwidth float64
 
 	lastTimeRequest float64
-	mutex sync.Mutex
+	mutex           sync.Mutex
 }
 
 type Event struct {
@@ -18,7 +21,7 @@ type Event struct {
 
 	remainingSize float64
 	label         string
-	callbacks []func(*Event)
+	callbacks     []func(*Event)
 }
 
 type ByTime []*Event
@@ -31,4 +34,8 @@ func (s ByTime) Swap(i, j int) {
 }
 func (s ByTime) Less(i, j int) bool {
 	return s[i].timeEnd < s[j].timeEnd
+}
+
+func (e *Event) String() string {
+	return fmt.Sprintf("%v", e.timeEnd)
 }

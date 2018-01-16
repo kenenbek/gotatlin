@@ -25,39 +25,43 @@ type Link struct {
 	*Resource
 }
 
-func(r *Resource) putEvents(events ...*Event){
+func (r *Resource) putEvents(events ...*Event) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	r.queue = append(r.queue, events...)
 }
-
 
 func MSG_platform_init(env *Environment) {
 	platform := make(map[Route]*Link)
 	v := Route{start: "A",
 		finish: "B"}
 	platform[v] = &Link{
-		bandwidth: 1,
-		mutex : &sync.Mutex{},
+		Resource: &Resource{
+			bandwidth: 1,
+			mutex:     sync.Mutex{},
+			queue:     []*Event{},
+		},
 	}
 	env.routesMap = platform
 }
 
 func MSG_task_send(worker *Worker, sender string, address string, size float64) interface{} {
-	wg := <- worker.resumeChan
+	wg := <-worker.resumeChan
 	defer wg.Done()
 
 	route := Route{sender, address}
-	timeEnd := worker.env.currentTime + size / worker.env.routesMap[route].bandwidth
+	timeEnd := worker.env.currentTime + size/worker.env.routesMap[route].bandwidth
 
 	eventA := Event{size: size,
 		timeStart: worker.env.currentTime,
 		timeEnd:   timeEnd,
-		label:     sender}
+		label:     sender,
+		remainingSize:size,}
 	eventB := Event{size: size,
 		timeStart: worker.env.currentTime,
 		timeEnd:   timeEnd,
-		label:     address}
+		label:     address,
+		remainingSize:size,}
 
 	worker.env.PutEvents(&eventA, &eventB)
 
@@ -67,9 +71,8 @@ func MSG_task_send(worker *Worker, sender string, address string, size float64) 
 }
 
 func MSG_task_receive(worker *Worker) interface{} {
-	wg := <- worker.resumeChan
+	wg := <-worker.resumeChan
 	defer wg.Done()
 	//_, value, _ := reflect.Select(env.cases)
 	return nil
 }
-
