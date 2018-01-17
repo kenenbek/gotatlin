@@ -1,8 +1,9 @@
 package main
 
 import (
-	"sync"
 	"fmt"
+	"sync"
+	"sync/atomic"
 )
 
 type Resource struct {
@@ -11,6 +12,16 @@ type Resource struct {
 
 	lastTimeRequest float64
 	mutex           sync.Mutex
+
+	counter int64
+}
+
+func (r *Resource) CounterAdd() {
+	atomic.AddInt64(&r.counter, 1)
+}
+
+func (r *Resource) CounterMinus() {
+	atomic.AddInt64(&r.counter, -1)
 }
 
 type Event struct {
@@ -20,8 +31,22 @@ type Event struct {
 	timeEnd   float64
 
 	remainingSize float64
-	label         string
+	resource      interface{}
 	callbacks     []func(*Event)
+	worker *Worker
+}
+
+type ImmuteEvent struct {
+	Event
+}
+
+func (e *Event) update(deltaT float64, env *Environment) {
+	switch e.resource.(type) {
+	case Link, *Link:
+		if e.timeStart < env.currentTime {
+			e.remainingSize -= deltaT * e.resource.(*Link).bandwidth
+		}
+	}
 }
 
 type ByTime []*Event

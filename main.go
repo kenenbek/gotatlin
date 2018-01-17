@@ -2,13 +2,12 @@ package main
 
 import (
 	"fmt"
-	"sort"
 	"sync"
 )
 
 func (w *Worker) send() {
 	for i := float64(1); i < 10; i++ {
-		MSG_task_send(w, "A", "B", 12*i)
+		w.MSG_task_send("Recv", 12*i)
 	}
 	w.cv.L.Lock()
 	w.noMoreEvents = true
@@ -17,7 +16,7 @@ func (w *Worker) send() {
 
 func (w *Worker) receive() {
 	for i := 1; i < 10; i++ {
-		MSG_task_receive(w)
+		w.MSG_task_receive()
 	}
 	w.cv.L.Lock()
 	w.noMoreEvents = true
@@ -34,7 +33,7 @@ func master(env *Environment, until interface{}, wg *sync.WaitGroup) {
 			env.PutEvents(&globalStop)
 		}
 	}
-	var currentEvent Event
+	var currentEvent *Event
 	defer wg.Done()
 	for !env.shouldStop {
 		n := len(env.workers)
@@ -47,19 +46,11 @@ func master(env *Environment, until interface{}, wg *sync.WaitGroup) {
 		}
 		WaitGWorkers.Wait()
 
-		//Sorting of events
-		sort.Sort(ByTime(env.queue))
-		currentEvent, env.queue = *env.queue[0], env.queue[1:]
-
-		// Process the event callbacks
-		callbacks := currentEvent.callbacks
-		currentEvent.callbacks = nil
-		for _, callback := range callbacks {
-			callback(&currentEvent)
-		}
+		// Pop from queue
+		currentEvent = env.PopFromQueue()
 
 		//Update duration
-		env.update(currentEvent.timeEnd - env.currentTime)
+		env.updateQueue(currentEvent.timeEnd - env.currentTime)
 
 		env.currentTime = currentEvent.timeEnd
 		fmt.Println(env.currentTime)
@@ -73,6 +64,13 @@ func master(env *Environment, until interface{}, wg *sync.WaitGroup) {
 			}
 		}
 		env.workers = env.workers[:j]
+
+
+
+		//
+		for !env.shouldStop{
+			currentEvent
+		}
 	}
 
 	fmt.Println("end-master")

@@ -1,6 +1,8 @@
 package main
 
-import "sync"
+import (
+	"sync"
+)
 
 type RoutesMap map[Route]*Link
 
@@ -17,8 +19,8 @@ func (routeMap RoutesMap) Get(r Route) (d *Link, ok bool) {
 }
 
 type Route struct {
-	start  string
-	finish string
+	start  *Host
+	finish *Host
 }
 
 type Link struct {
@@ -33,35 +35,54 @@ func (r *Resource) putEvents(events ...*Event) {
 
 func MSG_platform_init(env *Environment) {
 	platform := make(map[Route]*Link)
-	v := Route{start: "A",
-		finish: "B"}
+	hostsMap := make(map[string]*Host)
+	workersMap := make(map[string]*Worker)
+
+	hostA := &Host{name: "A"}
+	hostB := &Host{name: "B"}
+
+	v := Route{start: hostA,
+		finish: hostB,
+	}
+
 	platform[v] = &Link{
 		Resource: &Resource{
 			bandwidth: 1,
 			mutex:     sync.Mutex{},
 			queue:     []*Event{},
+			counter:   0,
 		},
 	}
+	hostsMap["A"] = hostA
+	hostsMap["B"] = hostB
+
 	env.routesMap = platform
+	env.hostsMap = hostsMap
+	env.workersMap = workersMap
 }
 
-func MSG_task_send(worker *Worker, sender string, address string, size float64) interface{} {
+func (worker *Worker) MSG_task_send(receiver string, size float64) interface{} {
 	wg := <-worker.resumeChan
 	defer wg.Done()
 
-	route := Route{sender, address}
+	workerReceiver := worker.env.getWorkerByName(receiver)
+
+	route := Route{worker.host, workerReceiver.host}
 	timeEnd := worker.env.currentTime + size/worker.env.routesMap[route].bandwidth
 
 	eventA := Event{size: size,
-		timeStart: worker.env.currentTime,
-		timeEnd:   timeEnd,
-		label:     sender,
-		remainingSize:size,}
+		timeStart:     worker.env.currentTime,
+		timeEnd:       timeEnd,
+		resource:      worker.env.routesMap[route],
+		remainingSize: size,
+		worker:        worker}
+
 	eventB := Event{size: size,
-		timeStart: worker.env.currentTime,
-		timeEnd:   timeEnd,
-		label:     address,
-		remainingSize:size,}
+		timeStart:     worker.env.currentTime,
+		timeEnd:       timeEnd,
+		resource:      worker.env.routesMap[route],
+		remainingSize: size,
+		worker:        workerReceiver}
 
 	worker.env.PutEvents(&eventA, &eventB)
 
@@ -70,9 +91,8 @@ func MSG_task_send(worker *Worker, sender string, address string, size float64) 
 	return nil
 }
 
-func MSG_task_receive(worker *Worker) interface{} {
+func (worker *Worker) MSG_task_receive() interface{} {
 	wg := <-worker.resumeChan
 	defer wg.Done()
-	//_, value, _ := reflect.Select(env.cases)
 	return nil
 }
