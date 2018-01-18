@@ -65,34 +65,30 @@ func (worker *Worker) MSG_task_send(receiver string, size float64) interface{} {
 	wg := <-worker.resumeChan
 	defer wg.Done()
 
-	workerReceiver := worker.env.getWorkerByName(receiver)
-
-	route := Route{worker.host, workerReceiver.host}
-	timeEnd := worker.env.currentTime + size/worker.env.routesMap[route].bandwidth
-
-	eventA := Event{size: size,
+	event := Event{size: size,
 		timeStart:     worker.env.currentTime,
-		timeEnd:       timeEnd,
-		resource:      worker.env.routesMap[route],
 		remainingSize: size,
-		worker:        worker}
+		worker:        worker,
 
-	eventB := Event{size: size,
-		timeStart:     worker.env.currentTime,
-		timeEnd:       timeEnd,
-		resource:      worker.env.routesMap[route],
-		remainingSize: size,
-		worker:        workerReceiver}
+		sender:worker.name,
+		receiver:receiver,
 
-	worker.env.PutEvents(&eventA, &eventB)
+		send:true,
+		recv:false}
 
-	// Should improve in the future!
-	worker.env.routesMap[route].putEvents(&eventA, &eventB)
+	worker.env.PutEvents(&event)
+
 	return nil
 }
 
-func (worker *Worker) MSG_task_receive() interface{} {
+func (worker *Worker) MSG_task_receive(listener string) interface{} {
 	wg := <-worker.resumeChan
 	defer wg.Done()
+
+	event := Event{
+		listener:listener,
+		send:false,
+		recv:true}
+	worker.env.PutEvents(&event)
 	return nil
 }

@@ -21,8 +21,8 @@ type Environment struct {
 	queue           []*Event
 	mutex           sync.Mutex
 	shouldStop      bool
-	hostsMap map[string]*Host
-	workersMap map[string]*Worker
+	hostsMap        map[string]*Host
+	workersMap      map[string]*Worker
 }
 
 func (env *Environment) stopSimulation(_ *Event) {
@@ -69,4 +69,38 @@ func (env *Environment) getHostByName(name string) *Host {
 
 func (env *Environment) getWorkerByName(name string) *Worker {
 	return env.workersMap[name]
+}
+
+func (env *Environment) calculateTwinEvents(name string) interface{} {
+	/*
+		nonoptimal solution
+	*/
+	// receiver -- senders map
+	ReceiverSendersMap := make(map[*Event][]*Event)
+	EventByNameMap := make(map[string]*Event)
+	for index := range env.queue {
+		if env.queue[index].recv {
+			ReceiverSendersMap[env.queue[index]] = []*Event{}
+			EventByNameMap[env.queue[index].listener] = env.queue[index]
+		}
+	}
+	for index := range env.queue {
+		if env.queue[index].send {
+			ReceiverSendersMap[EventByNameMap[env.queue[index].receiver]] = append(ReceiverSendersMap[EventByNameMap[env.queue[index].receiver]], env.queue[index])
+		}
+	}
+
+	for receiveEvent := range ReceiverSendersMap{
+		for index := range ReceiverSendersMap[receiveEvent]{
+			route := Route{receiveEvent.worker.host, ReceiverSendersMap[receiveEvent][index].worker.host}
+
+
+
+			}
+	}
+
+
+	// Should improve in the future!
+	worker.env.routesMap[route].putEvents(&event)
+	return nil
 }

@@ -16,6 +16,12 @@ type Resource struct {
 	counter int64
 }
 
+func (r *Resource) Put(e *Event) float64{
+	
+	return
+}
+
+
 func (r *Resource) CounterAdd() {
 	atomic.AddInt64(&r.counter, 1)
 }
@@ -34,6 +40,12 @@ type Event struct {
 	resource      interface{}
 	callbacks     []func(*Event)
 	worker *Worker
+	sender string
+	receiver string
+	listener string
+
+	recv bool
+	send bool
 }
 
 type ImmuteEvent struct {
