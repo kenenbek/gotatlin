@@ -4,6 +4,7 @@ import (
 	//"sort"
 	"sync"
 	//"fmt"
+	"fmt"
 	"sort"
 )
 
@@ -37,7 +38,7 @@ func (env *Environment) PutEvents(events ...*Event) {
 
 func (env *Environment) updateQueue(deltaTime float64) {
 	for index := range env.queue {
-		env.queue[index].update(deltaTime, env)
+		env.queue[index].update(deltaTime)
 	}
 	firstElement := env.queue[0]
 
@@ -90,17 +91,33 @@ func (env *Environment) calculateTwinEvents(name string) interface{} {
 		}
 	}
 
-	for receiveEvent := range ReceiverSendersMap{
-		for index := range ReceiverSendersMap[receiveEvent]{
+	for receiveEvent := range ReceiverSendersMap {
+		for index := range ReceiverSendersMap[receiveEvent] {
 			route := Route{receiveEvent.worker.host, ReceiverSendersMap[receiveEvent][index].worker.host}
-
-
-
-			}
+			env.routesMap.Get(route).Put(ReceiverSendersMap[receiveEvent][index])
+		}
+		sort.Sort(ByTime(ReceiverSendersMap[receiveEvent]))
+		receiveEvent.twinEvent, ReceiverSendersMap[receiveEvent][0].twinEvent = ReceiverSendersMap[receiveEvent][0].twinEvent, receiveEvent.twinEvent
 	}
-
-
-	// Should improve in the future!
-	worker.env.routesMap[route].putEvents(&event)
 	return nil
+}
+
+func (env *Environment) Step() {
+	currentEvent := env.PopFromQueue()
+
+	//Update duration
+	env.updateQueue(currentEvent.timeEnd.(float64) - env.currentTime)
+
+	env.currentTime = currentEvent.timeEnd.(float64)
+	fmt.Println(env.currentTime)
+
+	// Delete worker with noMore events
+	j := 0
+	for index := range env.workers {
+		if env.workers[index].hasMoreEvents() {
+			env.workers[j] = env.workers[index]
+			j++
+		}
+	}
+	env.workers = env.workers[:j]
 }

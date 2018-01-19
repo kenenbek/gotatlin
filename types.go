@@ -30,7 +30,7 @@ type Worker struct {
 	cv           *sync.Cond
 	noMoreEvents bool
 	mutex        sync.RWMutex
-	host *Host
+	host         *Host
 }
 
 type EndOfProcess struct {

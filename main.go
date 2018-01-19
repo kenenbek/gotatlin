@@ -33,44 +33,28 @@ func master(env *Environment, until interface{}, wg *sync.WaitGroup) {
 			env.PutEvents(&globalStop)
 		}
 	}
+	// Initial
 	var currentEvent *Event
 	defer wg.Done()
+
+	n := len(env.workers)
+
+	var WaitGWorkers sync.WaitGroup
+	WaitGWorkers.Add(len(env.workers))
+	for i := 0; i < n; i++ {
+		env.workers[i].resumeChan <- &WaitGWorkers
+	}
+	WaitGWorkers.Wait()
+
+	env.Step()
+
 	for !env.shouldStop {
-		n := len(env.workers)
+		var singleWG sync.WaitGroup
+		singleWG.Add(1)
+		currentEvent.worker.resumeChan <- &singleWG
+		singleWG.Wait()
 
-		var WaitGWorkers sync.WaitGroup
-		WaitGWorkers.Add(len(env.workers))
-		for i := 0; i < n; i++ {
-			//fmt.Println("master")
-			env.workers[i].resumeChan <- &WaitGWorkers
-		}
-		WaitGWorkers.Wait()
-
-		// Pop from queue
-		currentEvent = env.PopFromQueue()
-
-		//Update duration
-		env.updateQueue(currentEvent.timeEnd - env.currentTime)
-
-		env.currentTime = currentEvent.timeEnd
-		fmt.Println(env.currentTime)
-
-		// Delete worker with noMore events
-		j := 0
-		for index := range env.workers {
-			if env.workers[index].hasMoreEvents() {
-				env.workers[j] = env.workers[index]
-				j++
-			}
-		}
-		env.workers = env.workers[:j]
-
-
-
-		//
-		for !env.shouldStop{
-			currentEvent
-		}
+		env.Step()
 	}
 
 	fmt.Println("end-master")

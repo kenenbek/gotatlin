@@ -6,8 +6,8 @@ import (
 
 type RoutesMap map[Route]*Link
 
-func (routeMap RoutesMap) Get(r Route) (d *Link, ok bool) {
-	d, ok = routeMap[r]
+func (routeMap RoutesMap) Get(r Route) (d *Link) {
+	d, ok := routeMap[r]
 	if ok {
 		return
 	}
@@ -15,7 +15,7 @@ func (routeMap RoutesMap) Get(r Route) (d *Link, ok bool) {
 	if ok {
 		return
 	}
-	return nil, false
+	return nil
 }
 
 type Route struct {
@@ -70,11 +70,11 @@ func (worker *Worker) MSG_task_send(receiver string, size float64) interface{} {
 		remainingSize: size,
 		worker:        worker,
 
-		sender:worker.name,
-		receiver:receiver,
+		sender:   worker.name,
+		receiver: receiver,
 
-		send:true,
-		recv:false}
+		send: true,
+		recv: false}
 
 	worker.env.PutEvents(&event)
 
@@ -86,9 +86,9 @@ func (worker *Worker) MSG_task_receive(listener string) interface{} {
 	defer wg.Done()
 
 	event := Event{
-		listener:listener,
-		send:false,
-		recv:true}
+		listener: listener,
+		send:     false,
+		recv:     true}
 	worker.env.PutEvents(&event)
 	return nil
 }
