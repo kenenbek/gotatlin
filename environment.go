@@ -37,31 +37,17 @@ func (env *Environment) PutEvents(events ...*Event) {
 }
 
 func (env *Environment) updateQueue(deltaTime float64) {
+	// Some amount of data has been sent over time
 	for index := range env.queue {
-		env.queue[index].update(deltaTime)
+		event := env.queue[index]
+		event.remainingSize -= deltaTime * event.resource.(*Resource).bandwidth/float64(event.resource.(*Link).counter)
 	}
-	firstElement := env.queue[0]
+	firstEvent := env.queue[0]
 
-	switch firstElement.resource.(type) {
+	switch firstEvent.resource.(type) {
 	case Link, *Link:
-		firstElement.timeEnd = env.currentTime + firstElement.remainingSize/(firstElement.resource.(*Link).bandwidth/float64(firstElement.resource.(*Link).counter))
+		firstEvent.timeEnd = env.currentTime + firstEvent.remainingSize/(firstEvent.resource.(*Link).bandwidth/float64(firstEvent.resource.(*Link).counter))
 	}
-}
-
-func (env *Environment) PopFromQueue() *Event {
-	var currentEvent *Event
-	//Sorting of events
-	sort.Sort(ByTime(env.queue))
-
-	currentEvent, env.queue = env.queue[0], env.queue[1:]
-
-	// Process the event callbacks
-	callbacks := currentEvent.callbacks
-	currentEvent.callbacks = nil
-	for _, callback := range callbacks {
-		callback(currentEvent)
-	}
-	return currentEvent
 }
 
 func (env *Environment) getHostByName(name string) *Host {
@@ -81,25 +67,65 @@ func (env *Environment) calculateTwinEvents(name string) interface{} {
 	EventByNameMap := make(map[string]*Event)
 	for index := range env.queue {
 		if env.queue[index].recv {
-			ReceiverSendersMap[env.queue[index]] = []*Event{}
-			EventByNameMap[env.queue[index].listener] = env.queue[index]
+			event := env.queue[index]
+			ReceiverSendersMap[event] = []*Event{}
+			EventByNameMap[event.listener] = event
 		}
 	}
 	for index := range env.queue {
-		if env.queue[index].send {
-			ReceiverSendersMap[EventByNameMap[env.queue[index].receiver]] = append(ReceiverSendersMap[EventByNameMap[env.queue[index].receiver]], env.queue[index])
+		event := env.queue[index]
+		if event.send {
+			ReceiverSendersMap[EventByNameMap[event.receiver]] = append(ReceiverSendersMap[EventByNameMap[event.receiver]], event)
 		}
 	}
 
 	for receiveEvent := range ReceiverSendersMap {
 		for index := range ReceiverSendersMap[receiveEvent] {
-			route := Route{receiveEvent.worker.host, ReceiverSendersMap[receiveEvent][index].worker.host}
-			env.routesMap.Get(route).Put(ReceiverSendersMap[receiveEvent][index])
+			sendEvent := ReceiverSendersMap[receiveEvent][index]
+			route := Route{receiveEvent.worker.host, sendEvent.worker.host}
+			resource := env.routesMap.Get(route)
+			sendEvent.resource = resource
+			resource.Put(sendEvent)
 		}
 		sort.Sort(ByTime(ReceiverSendersMap[receiveEvent]))
 		receiveEvent.twinEvent, ReceiverSendersMap[receiveEvent][0].twinEvent = ReceiverSendersMap[receiveEvent][0].twinEvent, receiveEvent.twinEvent
 	}
 	return nil
+}
+
+
+func (env *Environment) PopFromQueue() *Event {
+	var currentEvent *Event
+	//Sorting of events
+	sort.Sort(ByTime(env.queue))
+
+	currentEvent, env.queue = env.queue[0], env.queue[1:]
+
+	if currentEvent.twinEvent != nil{
+		for i := range env.queue{
+			if currentEvent.twinEvent == env.queue[i]{
+				copy(env.queue[i:], env.queue[i+1:])
+				env.queue[len(env.queue)-1] = nil
+				env.queue = env.queue[:len(env.queue)-1]
+
+				// Process the event callbacks
+				callbacks := currentEvent.twinEvent.callbacks
+				currentEvent.twinEvent.callbacks = nil
+				for _, callback := range callbacks {
+					callback(currentEvent.twinEvent)
+				}
+				break
+			}
+		}
+	}
+
+	// Process the event callbacks
+	callbacks := currentEvent.callbacks
+	currentEvent.callbacks = nil
+	for _, callback := range callbacks {
+		callback(currentEvent)
+	}
+	return currentEvent
 }
 
 func (env *Environment) Step() {

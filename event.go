@@ -23,7 +23,7 @@ func (r *Resource) Put(e *Event) {
 
 	r.update()
 	r.queue = append(r.queue, e)
-	sort.Sort(ByRemainingSize(r.queue))
+	sort.Sort(ByTime(r.queue))
 	n := float64(atomic.LoadInt64(&r.counter))
 	r.bandwidth *= n / (n + 1)
 	if r.queue[0] == e {
@@ -59,10 +59,6 @@ type Event struct {
 	twinEvent *Event
 }
 
-type ImmuteEvent struct {
-	Event
-}
-
 func (r *Resource) update() {
 	//Delete remaining size
 
@@ -93,16 +89,4 @@ func (s ByTime) Less(i, j int) bool {
 
 func (e *Event) String() string {
 	return fmt.Sprintf("%v", e.timeEnd)
-}
-
-type ByRemainingSize []*Event
-
-func (b ByRemainingSize) Len() int {
-	return len(b)
-}
-func (b ByRemainingSize) Swap(i, j int) {
-	b[i], b[j] = b[j], b[i]
-}
-func (b ByRemainingSize) Less(i, j int) bool {
-	return b[i].remainingSize < b[j].remainingSize
 }

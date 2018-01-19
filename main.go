@@ -7,7 +7,7 @@ import (
 
 func (w *Worker) send() {
 	for i := float64(1); i < 10; i++ {
-		w.MSG_task_send("Recv", 12*i)
+		w.MSG_task_send("GMAIL", 12*i)
 	}
 	w.cv.L.Lock()
 	w.noMoreEvents = true
@@ -16,7 +16,7 @@ func (w *Worker) send() {
 
 func (w *Worker) receive() {
 	for i := 1; i < 10; i++ {
-		w.MSG_task_receive()
+		w.MSG_task_receive("GMAIL")
 	}
 	w.cv.L.Lock()
 	w.noMoreEvents = true
