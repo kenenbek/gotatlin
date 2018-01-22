@@ -2,53 +2,39 @@ package main
 
 import (
 	"fmt"
-	"sort"
-	"sync"
-	"sync/atomic"
 )
 
-type Resource struct {
-	queue     []*Event
-	bandwidth float64
-
-	lastTimeRequest float64
-	mutex           sync.Mutex
-
-	counter int64
-	env     *Environment
-}
-
-func (r *Resource) Put(e *Event) {
-	r.CounterAdd()
-
-	r.update()
-	r.queue = append(r.queue, e)
-	sort.Sort(ByTime(r.queue))
-	n := float64(atomic.LoadInt64(&r.counter))
-	r.bandwidth *= n / (n + 1)
-	if r.queue[0] == e {
-		e.timeEnd = r.queue[0].remainingSize / r.bandwidth
-	}
-}
-
-func (r *Resource) CounterAdd() {
-	atomic.AddInt64(&r.counter, 1)
-}
-
-func (r *Resource) CounterMinus() {
-	atomic.AddInt64(&r.counter, -1)
+type EventInterface interface {
+	update(float64)
+	calculateTimeEnd()
+	sendAble() bool
+	receiveAble() bool
+	getWorker() *Worker
+	getTimeEnd() *float64
+	getSize() float64
+	getCallbacks() []func(EventInterface)
 }
 
 type Event struct {
 	id        string
-	size      float64
 	timeStart float64
-	timeEnd   interface{}
+	timeEnd   *float64
+
+	callbacks []func(EventInterface)
+	worker    *Worker
+	env       *Environment
+}
+
+type ConstantEvent struct {
+	*Event
+}
+
+type TransferEvent struct {
+	*Event
+	size float64
 
 	remainingSize float64
 	resource      interface{}
-	callbacks     []func(*Event)
-	worker        *Worker
 	sender        string
 	receiver      string
 	listener      string
@@ -56,18 +42,83 @@ type Event struct {
 	recv bool
 	send bool
 
-	twinEvent *Event
+	twinEvent *TransferEvent
 }
 
-func (r *Resource) update() {
-	//Delete remaining size
-
-	for index := range r.queue {
-		r.queue[index].remainingSize -= (r.env.currentTime - r.lastTimeRequest) * r.bandwidth
-	}
+func (e *ConstantEvent) update(_ float64) {
+	//Nothing to update because event is immutable
 }
 
-type ByTime []*Event
+func (e *ConstantEvent) sendAble() bool {
+	return false
+}
+
+func (e *ConstantEvent) receiveAble() bool {
+	return false
+}
+
+func (e *ConstantEvent) calculateTimeEnd() {
+
+}
+
+func (e *ConstantEvent) getWorker() *Worker {
+	return e.worker
+}
+
+func (e *ConstantEvent) getTimeEnd() *float64 {
+	return e.timeEnd
+}
+
+func (e *ConstantEvent) getSize() float64 {
+	return 0
+}
+
+func (e *ConstantEvent) getCallbacks() []func(EventInterface) {
+	return e.callbacks
+}
+
+func (e *TransferEvent) update(deltaTime float64) {
+	e.remainingSize -= (e.env.currentTime - deltaTime) * e.resource.(*Link).bandwidth
+}
+
+func (e *TransferEvent) calculateTimeEnd() {
+	x := e.env.currentTime + e.remainingSize/(e.resource.(*Link).bandwidth/float64(e.resource.(*Link).counter))
+	e.timeEnd = &x
+}
+
+func (e *TransferEvent) sendAble() bool {
+	return e.send
+}
+
+func (e *TransferEvent) receiveAble() bool {
+	return e.recv
+}
+
+func (e *TransferEvent) getListenAddress() string {
+	return e.listener
+}
+
+func (e *TransferEvent) getReceiverAddress() string {
+	return e.receiver
+}
+
+func (e *TransferEvent) getWorker() *Worker {
+	return e.worker
+}
+
+func (e *TransferEvent) getTimeEnd() *float64 {
+	return e.timeEnd
+}
+
+func (e *TransferEvent) getSize() float64 {
+	return e.size
+}
+
+func (e *TransferEvent) getCallbacks() []func(EventInterface) {
+	return e.callbacks
+}
+
+type ByTime []EventInterface
 
 func (s ByTime) Len() int {
 	return len(s)
@@ -76,14 +127,34 @@ func (s ByTime) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
 func (s ByTime) Less(i, j int) bool {
-	if s[i].timeEnd == nil && s[j].timeEnd == nil {
-		return s[i].size < s[j].size
-	} else if s[i].timeEnd == nil {
+	if s[i].getTimeEnd() == nil && s[j].getTimeEnd() == nil {
+		return s[i].getSize() < s[j].getSize()
+	} else if s[i].getTimeEnd() == nil {
 		return false
-	} else if s[j].timeEnd == nil {
+	} else if s[j].getTimeEnd() == nil {
 		return true
 	} else {
-		return s[i].timeEnd.(float64) < s[j].timeEnd.(float64)
+		return *(s[i].getTimeEnd()) < *(s[j].getTimeEnd())
+	}
+}
+
+type ByTransferTime []*TransferEvent
+
+func (s ByTransferTime) Len() int {
+	return len(s)
+}
+func (s ByTransferTime) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+func (s ByTransferTime) Less(i, j int) bool {
+	if s[i].getTimeEnd() == nil && s[j].getTimeEnd() == nil {
+		return s[i].getSize() < s[j].getSize()
+	} else if s[i].getTimeEnd() == nil {
+		return false
+	} else if s[j].getTimeEnd() == nil {
+		return true
+	} else {
+		return *(s[i].getTimeEnd()) < *(s[j].getTimeEnd())
 	}
 }
 

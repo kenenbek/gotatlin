@@ -6,8 +6,8 @@ import (
 )
 
 func (w *Worker) send() {
-	for i := float64(1); i < 10; i++ {
-		w.MSG_task_send("GMAIL", 12*i)
+	for i := float64(1); i < 2; i++ {
+		w.MSG_task_send("GMAIL", 2*i)
 	}
 	w.cv.L.Lock()
 	w.noMoreEvents = true
@@ -15,7 +15,7 @@ func (w *Worker) send() {
 }
 
 func (w *Worker) receive() {
-	for i := 1; i < 10; i++ {
+	for i := 1; i < 2; i++ {
 		w.MSG_task_receive("GMAIL")
 	}
 	w.cv.L.Lock()
@@ -28,13 +28,15 @@ func master(env *Environment, until interface{}, wg *sync.WaitGroup) {
 		switch until := until.(type) {
 		default:
 			untilFloat64 := until.(float64)
-			globalStop := Event{timeEnd: untilFloat64}
+			globalStop := ConstantEvent{
+				Event: &Event{timeEnd: &untilFloat64},
+			}
 			globalStop.callbacks = append(globalStop.callbacks, env.stopSimulation)
 			env.PutEvents(&globalStop)
 		}
 	}
 	// Initial
-	var currentEvent *Event
+	var currentEvent EventInterface
 	defer wg.Done()
 
 	n := len(env.workers)
@@ -45,16 +47,16 @@ func master(env *Environment, until interface{}, wg *sync.WaitGroup) {
 		env.workers[i].resumeChan <- &WaitGWorkers
 	}
 	WaitGWorkers.Wait()
-
-	env.Step()
+	env.calculateTwinEvents()
+	currentEvent = env.Step()
 
 	for !env.shouldStop {
 		var singleWG sync.WaitGroup
 		singleWG.Add(1)
-		currentEvent.worker.resumeChan <- &singleWG
+		currentEvent.getWorker().resumeChan <- &singleWG
 		singleWG.Wait()
-
-		env.Step()
+		env.calculateTwinEvents()
+		currentEvent = env.Step()
 	}
 
 	fmt.Println("end-master")
@@ -66,8 +68,8 @@ func main() {
 	link := make(chan float64)
 	var wg sync.WaitGroup
 	wg.Add(1)
-	_ = NewWorkerSender(env, link)
-	_ = NewWorkerReceiver(env, link)
+	_ = NewWorkerSender(env, link, "A")
+	_ = NewWorkerReceiver(env, link, "B")
 
 	go master(env, float64(51.61), &wg)
 	wg.Wait()

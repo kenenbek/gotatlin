@@ -19,6 +19,7 @@ type Process struct {
 	waitEventsOrDone chan interface{}
 	noMoreEventsChan chan bool
 	resumeChan       chan *sync.WaitGroup
+	host             *Host
 }
 
 type Worker struct {
@@ -30,7 +31,6 @@ type Worker struct {
 	cv           *sync.Cond
 	noMoreEvents bool
 	mutex        sync.RWMutex
-	host         *Host
 }
 
 type EndOfProcess struct {

@@ -27,11 +27,11 @@ type Link struct {
 	*Resource
 }
 
-func (r *Resource) putEvents(events ...*Event) {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-	r.queue = append(r.queue, events...)
-}
+//func (r *Resource) putEvents(events ...*Event) {
+//	r.mutex.Lock()
+//	defer r.mutex.Unlock()
+//	r.queue = append(r.queue, events...)
+//}
 
 func MSG_platform_init(env *Environment) {
 	platform := make(map[Route]*Link)
@@ -49,7 +49,7 @@ func MSG_platform_init(env *Environment) {
 		Resource: &Resource{
 			bandwidth: 1,
 			mutex:     sync.Mutex{},
-			queue:     []*Event{},
+			queue:     []*TransferEvent{},
 			counter:   0,
 		},
 	}
@@ -65,10 +65,14 @@ func (worker *Worker) MSG_task_send(receiver string, size float64) interface{} {
 	wg := <-worker.resumeChan
 	defer wg.Done()
 
-	event := Event{size: size,
-		timeStart:     worker.env.currentTime,
+	event := TransferEvent{
+		Event: &Event{
+			timeStart: worker.env.currentTime,
+			worker:    worker,
+		},
+
+		size:          size,
 		remainingSize: size,
-		worker:        worker,
 
 		sender:   worker.name,
 		receiver: receiver,
@@ -85,10 +89,15 @@ func (worker *Worker) MSG_task_receive(listener string) interface{} {
 	wg := <-worker.resumeChan
 	defer wg.Done()
 
-	event := Event{
+	event := TransferEvent{
+		Event: &Event{
+			worker: worker,
+		},
 		listener: listener,
 		send:     false,
-		recv:     true}
+		recv:     true,
+	}
+
 	worker.env.PutEvents(&event)
 	return nil
 }
