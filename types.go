@@ -2,6 +2,8 @@ package main
 
 import (
 	"sync"
+	"fmt"
+	"reflect"
 )
 
 type askChannel chan interface{}
@@ -74,4 +76,21 @@ func (w *Worker) hasMoreEvents() bool {
 
 func (worker *Worker) doWork() {
 	<-worker.resumeChan
+}
+
+
+func(env *Environment) WaitWorkers(cases []reflect.SelectCase){
+
+	remaining := len(cases)
+	for remaining > 0 {
+		chosen, value, ok := reflect.Select(cases)
+		if !ok {
+			// The chosen channel has been closed, so zero out the channel to disable the case
+			cases[chosen].Chan = reflect.ValueOf(nil)
+			remaining -= 1
+			continue
+		}
+
+		fmt.Printf("Read from channel %#v and received %s\n", chans[chosen], value.String())
+	}
 }
