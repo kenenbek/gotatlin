@@ -59,7 +59,7 @@ func NewProcess(env *Environment, host *Host) *Process {
 		answerChannel:    answer,
 		waitEventsOrDone: closeChan,
 		noMoreEventsChan: noMEC,
-		resumeChan:       make(chan *sync.WaitGroup),
+		resumeChan:       make(chan struct{}),
 		host:             host,
 	}
 }

@@ -62,8 +62,7 @@ func MSG_platform_init(env *Environment) {
 }
 
 func (worker *Worker) MSG_task_send(receiver string, size float64) interface{} {
-	wg := <-worker.resumeChan
-	defer wg.Done()
+	<-worker.resumeChan
 
 	event := TransferEvent{
 		Event: &Event{
@@ -81,13 +80,12 @@ func (worker *Worker) MSG_task_send(receiver string, size float64) interface{} {
 		recv: false}
 
 	worker.env.PutEvents(&event)
-
+	worker.resumeChan <- struct {}{}
 	return nil
 }
 
 func (worker *Worker) MSG_task_receive(listener string) interface{} {
-	wg := <-worker.resumeChan
-	defer wg.Done()
+	<-worker.resumeChan
 
 	event := TransferEvent{
 		Event: &Event{
@@ -99,5 +97,6 @@ func (worker *Worker) MSG_task_receive(listener string) interface{} {
 	}
 
 	worker.env.PutEvents(&event)
+	worker.resumeChan <- struct {}{}
 	return nil
 }

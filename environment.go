@@ -5,8 +5,8 @@ import (
 	"sync"
 	//"fmt"
 	"fmt"
-	"sort"
 	"reflect"
+	"sort"
 )
 
 type Host struct {
@@ -140,7 +140,7 @@ func (env *Environment) PopFromQueue() EventInterface {
 	return currentEvent
 }
 
-func (env *Environment) Step() EventInterface{
+func (env *Environment) Step() (EventInterface, bool) {
 	currentEvent := env.PopFromQueue()
 
 	//Update duration
@@ -155,9 +155,11 @@ func (env *Environment) Step() EventInterface{
 		if env.workers[index].hasMoreEvents() {
 			env.workers[j] = env.workers[index]
 			j++
+		}else {
+			env.workers[index] = nil
 		}
 	}
 	env.workers = env.workers[:j]
 
-	return currentEvent
+	return currentEvent, currentEvent.getWorker() != nil
 }
