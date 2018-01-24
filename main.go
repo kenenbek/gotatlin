@@ -41,7 +41,7 @@ func master(env *Environment, until interface{}, wg *sync.WaitGroup) {
 	var isWorkerAlive bool
 	defer wg.Done()
 
-	cases := env.DoCases(env.workers)
+	cases := env.DoCases(env.workers...)
 	env.SendCases(cases)
 	env.WaitWorkers(cases)
 
@@ -50,14 +50,11 @@ func master(env *Environment, until interface{}, wg *sync.WaitGroup) {
 
 	for !env.shouldStop {
 
-		if isWorkerAlive
-
-
-		var singleWG sync.WaitGroup
-		singleWG.Add(1)
-		currentEvent.getWorker().resumeChan <- &singleWG
-		singleWG.Wait()
-
+		if isWorkerAlive{
+			cases := env.DoCases(currentEvent.getWorker())
+			env.SendCases(cases)
+			env.WaitWorkers(cases)
+		}
 
 		env.calculateTwinEvents()
 		currentEvent, isWorkerAlive = env.Step()
@@ -79,10 +76,24 @@ func main() {
 	wg.Wait()
 }
 
-func (env *Environment) DoCases(workers []*Worker) []reflect.SelectCase {
+func (env *Environment) DoCases(workers ...*Worker) []reflect.SelectCase {
 	cases := make([]reflect.SelectCase, len(workers))
 	for i := range workers {
 		cases[i] = reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(workers[i].resumeChan)}
+	}
+	return cases
+}
+
+func (env *Environment) DoCasesForEvent(event EventInterface) []reflect.SelectCase {
+	var cases []reflect.SelectCase
+	switch event.(type) {
+	case *TransferEvent:
+		te := event.(*TransferEvent)
+		cases = append(cases, reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(te.worker.resumeChan)})
+		cases = append(cases, reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(te.twinEvent.worker.resumeChan)})
+	case *ConstantEvent:
+		ce := event.(*ConstantEvent)
+		cases = append(cases, reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(ce.worker.resumeChan)})
 	}
 	return cases
 }

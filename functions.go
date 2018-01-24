@@ -77,8 +77,10 @@ func (worker *Worker) MSG_task_send(receiver string, size float64) interface{} {
 		receiver: receiver,
 
 		send: true,
-		recv: false}
+		recv: false,
 
+		}
+	event.callbacks = append(event.callbacks, event.print)
 	worker.env.PutEvents(&event)
 	worker.resumeChan <- struct {}{}
 	return nil
@@ -95,7 +97,7 @@ func (worker *Worker) MSG_task_receive(listener string) interface{} {
 		send:     false,
 		recv:     true,
 	}
-
+	event.callbacks = append(event.callbacks, event.print)
 	worker.env.PutEvents(&event)
 	worker.resumeChan <- struct {}{}
 	return nil

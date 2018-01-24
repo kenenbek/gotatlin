@@ -13,6 +13,7 @@ type EventInterface interface {
 	getTimeEnd() *float64
 	getSize() float64
 	getCallbacks() []func(EventInterface)
+	print(EventInterface)
 }
 
 type Event struct {
@@ -77,6 +78,10 @@ func (e *ConstantEvent) getCallbacks() []func(EventInterface) {
 	return e.callbacks
 }
 
+func (e *ConstantEvent) print(_ EventInterface) {
+	fmt.Printf("Start %v | End %v", e.timeStart, *e.timeEnd)
+}
+
 func (e *TransferEvent) update(deltaTime float64) {
 	e.remainingSize -= (e.env.currentTime - deltaTime) * e.resource.(*Link).bandwidth
 }
@@ -116,6 +121,10 @@ func (e *TransferEvent) getSize() float64 {
 
 func (e *TransferEvent) getCallbacks() []func(EventInterface) {
 	return e.callbacks
+}
+
+func (e *TransferEvent) print(_ EventInterface) {
+	fmt.Printf("Start %v | End %v\n", e.timeStart, *e.timeEnd)
 }
 
 type ByTime []EventInterface
@@ -159,5 +168,5 @@ func (s ByTransferTime) Less(i, j int) bool {
 }
 
 func (e *Event) String() string {
-	return fmt.Sprintf("%v", e.timeEnd)
+	return fmt.Sprintf("Start %v | End  %v\n", e.timeStart, e.timeEnd)
 }

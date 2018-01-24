@@ -1,11 +1,7 @@
 package main
 
 import (
-	//"sort"
 	"sync"
-	//"fmt"
-	"fmt"
-	"reflect"
 	"sort"
 )
 
@@ -86,7 +82,6 @@ func (env *Environment) calculateTwinEvents() interface{} {
 	}
 
 	for recEvent := range ReceiverSendersMap {
-		fmt.Println("receiver type", reflect.TypeOf(recEvent))
 		receiveEvent := recEvent.(*TransferEvent)
 		for index := range ReceiverSendersMap[receiveEvent] {
 			sendEvent := ReceiverSendersMap[receiveEvent][index].(*TransferEvent)
@@ -99,7 +94,6 @@ func (env *Environment) calculateTwinEvents() interface{} {
 		sort.Sort(ByTime(ReceiverSendersMap[receiveEvent]))
 		receiveEvent.twinEvent, ReceiverSendersMap[receiveEvent][0].(*TransferEvent).twinEvent = ReceiverSendersMap[receiveEvent][0].(*TransferEvent), receiveEvent
 		receiveEvent.resource = receiveEvent.twinEvent.resource
-		fmt.Println("kotok")
 	}
 	return nil
 }
@@ -143,23 +137,23 @@ func (env *Environment) PopFromQueue() EventInterface {
 func (env *Environment) Step() (EventInterface, bool) {
 	currentEvent := env.PopFromQueue()
 
-	//Update duration
-	env.updateQueue(*currentEvent.getTimeEnd() - env.currentTime)
+	if len(env.queue) > 0 {
+		env.updateQueue(*currentEvent.getTimeEnd() - env.currentTime)
 
-	env.currentTime = *currentEvent.getTimeEnd()
-	fmt.Println(env.currentTime, "fg")
-
-	// Delete worker with noMore events
-	j := 0
-	for index := range env.workers {
-		if env.workers[index].hasMoreEvents() {
-			env.workers[j] = env.workers[index]
-			j++
-		}else {
-			env.workers[index] = nil
+		// Delete worker with noMore events
+		j := 0
+		for index := range env.workers {
+			if env.workers[index].hasMoreEvents() {
+				env.workers[j] = env.workers[index]
+				j++
+			} else {
+				env.workers[index] = nil
+			}
 		}
+		env.workers = env.workers[:j]
+	}else {
+		env.shouldStop = true
 	}
-	env.workers = env.workers[:j]
-
+	env.currentTime = *currentEvent.getTimeEnd()
 	return currentEvent, currentEvent.getWorker() != nil
 }
