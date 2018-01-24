@@ -27,12 +27,14 @@ func (w *Worker) receive() {
 func master(env *Environment, until interface{}, wg *sync.WaitGroup) {
 	if until != nil {
 		switch until := until.(type) {
+		case nil:
+			//do nothing
 		default:
 			untilFloat64 := until.(float64)
 			globalStop := ConstantEvent{
 				Event: &Event{timeEnd: &untilFloat64},
 			}
-			globalStop.callbacks = append(globalStop.callbacks, env.stopSimulation)
+			globalStop.callbacks = append(globalStop.callbacks, env.stopSimulation, globalStop.print)
 			env.PutEvents(&globalStop)
 		}
 	}

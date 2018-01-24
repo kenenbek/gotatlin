@@ -79,7 +79,7 @@ func (e *ConstantEvent) getCallbacks() []func(EventInterface) {
 }
 
 func (e *ConstantEvent) print(_ EventInterface) {
-	fmt.Printf("Start %v | End %v", e.timeStart, *e.timeEnd)
+	fmt.Printf("Start %v | End %v\n", e.timeStart, *e.timeEnd)
 }
 
 func (e *TransferEvent) update(deltaTime float64) {
@@ -124,7 +124,11 @@ func (e *TransferEvent) getCallbacks() []func(EventInterface) {
 }
 
 func (e *TransferEvent) print(_ EventInterface) {
-	fmt.Printf("Start %v | End %v\n", e.timeStart, *e.timeEnd)
+	if e.timeEnd == nil{
+		fmt.Printf("Start %v | End %v\n", e.timeStart)
+	}else {
+		fmt.Printf("Start %v | End %v\n", e.timeStart, *e.timeEnd)
+	}
 }
 
 type ByTime []EventInterface

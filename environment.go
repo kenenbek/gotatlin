@@ -94,6 +94,7 @@ func (env *Environment) calculateTwinEvents() interface{} {
 		sort.Sort(ByTime(ReceiverSendersMap[receiveEvent]))
 		receiveEvent.twinEvent, ReceiverSendersMap[receiveEvent][0].(*TransferEvent).twinEvent = ReceiverSendersMap[receiveEvent][0].(*TransferEvent), receiveEvent
 		receiveEvent.resource = receiveEvent.twinEvent.resource
+		receiveEvent.timeEnd = receiveEvent.twinEvent.timeEnd
 	}
 	return nil
 }
@@ -113,7 +114,7 @@ func (env *Environment) PopFromQueue() EventInterface {
 				env.queue[len(env.queue)-1] = nil
 				env.queue = env.queue[:len(env.queue)-1]
 
-				// Process the event callbacks
+				// Process the event of twin event callbacks
 				callbacks := CE.twinEvent.callbacks
 				CE.twinEvent.callbacks = nil
 				for _, callback := range callbacks {
@@ -123,7 +124,6 @@ func (env *Environment) PopFromQueue() EventInterface {
 			}
 		}
 	case *ConstantEvent:
-
 	}
 
 	// Process the event callbacks
