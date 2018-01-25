@@ -68,6 +68,7 @@ func (worker *Worker) MSG_task_send(receiver string, size float64) interface{} {
 		Event: &Event{
 			timeStart: worker.env.currentTime,
 			worker:    worker,
+			env:worker.env,
 		},
 
 		size:          size,
@@ -92,6 +93,7 @@ func (worker *Worker) MSG_task_receive(listener string) interface{} {
 	event := TransferEvent{
 		Event: &Event{
 			worker: worker,
+			env:worker.env,
 		},
 		listener: listener,
 		send:     false,

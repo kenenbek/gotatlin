@@ -23,7 +23,10 @@ func (r *Resource) Put(e *TransferEvent) {
 	r.queue = append(r.queue, e)
 	sort.Sort(ByTransferTime(r.queue))
 	n := float64(atomic.LoadInt64(&r.counter))
-	r.bandwidth *= n / (n + 1)
+
+	if n > 1{
+		r.bandwidth *= (n - 1) / n
+	}
 	if r.queue[0] == e {
 		x := r.queue[0].remainingSize / r.bandwidth
 		e.timeEnd = &x

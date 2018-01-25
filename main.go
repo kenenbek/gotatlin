@@ -7,7 +7,7 @@ import (
 )
 
 func (w *Worker) send() {
-	for i := float64(1); i < 2; i++ {
+	for i := float64(1); i < 3; i++ {
 		w.MSG_task_send("GMAIL", 2*i)
 	}
 	<- w.resumeChan
@@ -16,7 +16,7 @@ func (w *Worker) send() {
 }
 
 func (w *Worker) receive() {
-	for i := 1; i < 2; i++ {
+	for i := 1; i < 3; i++ {
 		w.MSG_task_receive("GMAIL")
 	}
 	<- w.resumeChan
@@ -53,7 +53,7 @@ func master(env *Environment, until interface{}, wg *sync.WaitGroup) {
 	for !env.shouldStop {
 
 		if isWorkerAlive{
-			cases := env.DoCases(currentEvent.getWorker())
+			cases = env.DoCasesForEvent(currentEvent)
 			env.SendCases(cases)
 			env.WaitWorkers(cases)
 		}

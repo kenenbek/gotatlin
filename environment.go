@@ -57,7 +57,7 @@ func (env *Environment) getWorkerByName(name string) *Worker {
 
 func (env *Environment) calculateTwinEvents() interface{} {
 	/*
-		nonoptimal solution
+		nonoptimal solution?
 	*/
 	// receiver -- senders map
 	ReceiverSendersMap := make(map[EventInterface][]EventInterface)
